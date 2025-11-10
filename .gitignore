@@ -48,6 +48,7 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+.ruff_cache/
 
 # Type checking
 .mypy_cache/

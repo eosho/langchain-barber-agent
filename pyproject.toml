@@ -77,8 +77,8 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=5.0.0",
@@ -111,6 +111,8 @@ db-migrate = "alembic revision --autogenerate -m"
 db-upgrade = "alembic upgrade head"
 db-downgrade = "alembic downgrade -1"
 db-reset = ["db-downgrade", "db-upgrade"]
+db-current = "alembic current"
+db-history = "alembic history --verbose"
 db-seed = "python seed_db.py"
 db-seed-clear = "python seed_db.py --clear"
 db-list = "python list_data.py"

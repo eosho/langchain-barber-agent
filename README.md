@@ -88,19 +88,41 @@ uv run poe dev-all
 
 ### Database Management
 
+The project uses Alembic for database migrations with async SQLAlchemy support.
+
 ```bash
-# Create new migration
+# Create new migration (after modifying models)
 uv run poe db-migrate "description of changes"
+# Or directly: uv run alembic revision --autogenerate -m "message"
 
 # Apply migrations
 uv run poe db-upgrade
+# Or directly: uv run alembic upgrade head
 
 # Rollback one migration
 uv run poe db-downgrade
+# Or directly: uv run alembic downgrade -1
+
+# Check current migration version
+uv run poe db-current
+
+# View migration history
+uv run poe db-history
 
 # Reset database (downgrade + upgrade)
 uv run poe db-reset
 ```
+
+**Configuration:**
+- `alembic.ini` - Alembic configuration file
+- `alembic/env.py` - Async migration environment setup
+- `alembic/versions/` - Migration scripts directory
+
+**Best Practices:**
+- Always create a migration after modifying database models
+- Review auto-generated migrations before applying them
+- Test migrations on a development database first
+- Never modify migration files after they've been applied to production
 
 ## Testing
 
@@ -117,11 +139,6 @@ uv run poe test-integration
 # Generate coverage report
 uv run poe test-cov
 ```
-
-Test suite includes:
-- **28 unit tests** - Middleware components (business rules, usage tracking, booking context)
-- **8 integration tests** - Agent middleware integration
-- **29 API tests** - FastAPI endpoints
 
 ## Code Quality
 
