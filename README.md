@@ -178,14 +178,6 @@ The agent uses the following middleware (in execution order):
 
 See [MIDDLEWARE.md](docs/MIDDLEWARE.md) for details.
 
-## Business Rules
-
-- **Minimum booking notice**: 2 hours
-- **Maximum booking window**: 90 days
-- **Business hours**: 9 AM - 6 PM
-- **Closed**: Sundays
-- **Cancellation policy**: 24 hours notice required
-
 ## License
 
-MIT
+MIT License
