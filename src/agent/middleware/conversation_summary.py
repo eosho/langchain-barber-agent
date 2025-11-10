@@ -17,6 +17,7 @@ class ConversationSummaryMiddleware(AgentMiddleware):
 
     @property
     def name(self) -> str:
+        """Return the middleware name identifier."""
         return "conversation_summary"
 
     def __init__(self, max_messages: int = 20):

@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.api.models.database import Booking, Customer, Service
-from src.api.models.schemas import AvailabilityQuery, BookingCreate, BookingResponse, BookingUpdate
+from src.api.models.schemas import (
+    AvailabilityQuery,
+    BookingCreate,
+    BookingResponse,
+    BookingUpdate,
+)
 from src.core.database import get_db
 
 router = APIRouter()

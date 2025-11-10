@@ -17,6 +17,7 @@ class BookingContextMiddleware(AgentMiddleware):
 
     @property
     def name(self) -> str:
+        """Return the middleware name identifier."""
         return "booking_context"
 
     def before_model(

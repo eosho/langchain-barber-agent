@@ -44,8 +44,6 @@ class CustomerBase(BaseModel):
 class CustomerCreate(CustomerBase):
     """Schema for creating a new customer."""
 
-    pass
-
 
 class CustomerUpdate(BaseModel):
     """Schema for updating customer information.
@@ -103,8 +101,6 @@ class BarberBase(BaseModel):
 
 class BarberCreate(BarberBase):
     """Schema for creating a new barber."""
-
-    pass
 
 
 class BarberUpdate(BaseModel):
