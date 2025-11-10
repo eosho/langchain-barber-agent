@@ -1,0 +1,229 @@
+[project]
+name = "barbershop-booking-agent"
+version = "0.1.0"
+description = "AI-powered barbershop booking agent with conversational interface"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+keywords = ["ai", "agent", "booking", "barbershop", "langchain", "fastapi", "chainlit"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # LangChain Core & Agent Framework
+    "langchain>=1.0.5",
+    "langchain-openai>=1.0.2",
+    "langchain-core>=1.0.4",
+    "langgraph>=1.0.2",
+    "langsmith>=0.1.0",
+
+    # FastAPI & Web Framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+    "pydantic[email]>=2.9.0",
+
+    # Chainlit UI
+    "chainlit>=1.3.0",
+
+    # Database & ORM
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "aiosqlite>=0.20.0",
+
+    # Configuration & Utils
+    "pyyaml>=6.0.0",
+    "asyncpg>=0.29.0",  # Async PostgreSQL driver
+    "aiosqlite>=0.20.0",  # Async SQLite driver for dev
+
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "python-jose[cryptography]>=3.3.0",  # JWT handling
+    "passlib[bcrypt]>=1.7.4",  # Password hashing
+    "httpx>=0.27.0",  # Async HTTP client
+    "tenacity>=9.0.0",  # Retry logic
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "httpx>=0.27.0",  # For testing FastAPI
+
+    # Code Quality
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "black>=24.8.0",
+
+    # Development Tools
+    "ipython>=8.27.0",
+    "ipdb>=0.13.0",
+    "poethepoet>=0.29.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "httpx>=0.27.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "black>=24.8.0",
+    "ipython>=8.27.0",
+    "ipdb>=0.13.0",
+    "poethepoet>=0.29.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+# Poe the Poet task runner configuration
+[tool.poe.tasks]
+# Development servers
+dev-api = "uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8005"
+dev-ui = "chainlit run src/ui/chat_app.py --host 0.0.0.0 --port 8006"
+dev-agent = "python run.py"
+dev-all = ["dev-api", "dev-ui"]  # Run both in parallel
+
+# Database management
+db-init = "alembic upgrade head"
+db-migrate = "alembic revision --autogenerate -m"
+db-upgrade = "alembic upgrade head"
+db-downgrade = "alembic downgrade -1"
+db-reset = ["db-downgrade", "db-upgrade"]
+db-seed = "python seed_db.py"
+db-seed-clear = "python seed_db.py --clear"
+db-list = "python list_data.py"
+db-list-customers = "python list_data.py --customers"
+db-list-barbers = "python list_data.py --barbers"
+db-list-services = "python list_data.py --services"
+db-list-availability = "python list_data.py --availability"
+db-list-bookings = "python list_data.py --bookings"
+
+# Testing
+test = "pytest tests/ -v"
+test-unit = "pytest tests/unit/ -v"
+test-integration = "pytest tests/integration/ -v"
+test-cov = "pytest tests/ --cov=src --cov-report=html --cov-report=term"
+
+# Code quality
+lint = "ruff check src tests"
+lint-fix = "ruff check --fix src tests"
+format = "black src tests"
+format-check = "black --check src tests"
+type-check = "mypy src"
+quality = ["format", "lint-fix", "type-check"]
+
+# Combined tasks
+check = ["format-check", "lint", "type-check", "test"]
+pre-commit = ["quality", "test"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "W191",  # indentation contains tabs
+    "ARG002",  # Unused function argument
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "chainlit.*",
+    "langchain.*",
+    "langgraph.*",
+    "langsmith.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
