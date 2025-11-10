@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 import asyncio
-import json
 from datetime import datetime
 
 from sqlalchemy import select
