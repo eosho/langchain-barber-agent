@@ -25,6 +25,7 @@ class UsageTrackingMiddleware(AgentMiddleware):
 
     @property
     def name(self) -> str:
+        """Return the middleware name identifier."""
         return "usage_tracking"
 
     def after_model(

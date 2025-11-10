@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 import asyncio
-import json
 from datetime import datetime
 
 from sqlalchemy import select
@@ -67,7 +66,7 @@ async def list_barbers(session):
         return
 
     for barber in barbers:
-        specialties = json.loads(barber.specialties) if barber.specialties else []
+        specialties = barber.specialties if barber.specialties else []
         status = "✅ Active" if barber.is_active else "❌ Inactive"
 
         print(f"\n💇 {barber.name} ({status})")
@@ -141,7 +140,7 @@ async def list_bookings(session):
         .join(Customer, Booking.customer_id == Customer.id)
         .join(Service, Booking.service_id == Service.id)
         .outerjoin(Barber, Booking.barber_id == Barber.id)
-        .order_by(Booking.booking_date.desc(), Booking.booking_time.desc())
+        .order_by(Booking.start_time.desc())
     )
     rows = result.all()
 
@@ -155,6 +154,7 @@ async def list_bookings(session):
             "confirmed": "🟢",
             "cancelled": "🔴",
             "completed": "✅",
+            "no_show": "❌",
         }
         status = f"{status_emoji.get(booking.status, '⚪')} {booking.status.upper()}"
 
@@ -163,8 +163,8 @@ async def list_bookings(session):
         print(f"   Customer: {customer.name} ({customer.phone})")
         print(f"   Service: {service.name} (${service.price:.2f})")
         print(f"   Barber: {barber.name if barber else 'Not assigned'}")
-        print(f"   Date: {booking.booking_date}")
-        print(f"   Time: {booking.booking_time}")
+        print(f"   Start: {booking.start_time.strftime('%Y-%m-%d %H:%M')}")
+        print(f"   End: {booking.end_time.strftime('%Y-%m-%d %H:%M')}")
         if booking.notes:
             print(f"   Notes: {booking.notes}")
         print(f"   Created: {booking.created_at.strftime('%Y-%m-%d %H:%M')}")

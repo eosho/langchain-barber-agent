@@ -88,19 +88,41 @@ uv run poe dev-all
 
 ### Database Management
 
+The project uses Alembic for database migrations with async SQLAlchemy support.
+
 ```bash
-# Create new migration
+# Create new migration (after modifying models)
 uv run poe db-migrate "description of changes"
+# Or directly: uv run alembic revision --autogenerate -m "message"
 
 # Apply migrations
 uv run poe db-upgrade
+# Or directly: uv run alembic upgrade head
 
 # Rollback one migration
 uv run poe db-downgrade
+# Or directly: uv run alembic downgrade -1
+
+# Check current migration version
+uv run poe db-current
+
+# View migration history
+uv run poe db-history
 
 # Reset database (downgrade + upgrade)
 uv run poe db-reset
 ```
+
+**Configuration:**
+- `alembic.ini` - Alembic configuration file
+- `alembic/env.py` - Async migration environment setup
+- `alembic/versions/` - Migration scripts directory
+
+**Best Practices:**
+- Always create a migration after modifying database models
+- Review auto-generated migrations before applying them
+- Test migrations on a development database first
+- Never modify migration files after they've been applied to production
 
 ## Testing
 
@@ -117,11 +139,6 @@ uv run poe test-integration
 # Generate coverage report
 uv run poe test-cov
 ```
-
-Test suite includes:
-- **28 unit tests** - Middleware components (business rules, usage tracking, booking context)
-- **8 integration tests** - Agent middleware integration
-- **29 API tests** - FastAPI endpoints
 
 ## Code Quality
 
@@ -141,6 +158,71 @@ uv run poe type-check     # Run mypy
 uv run poe quality        # format + lint-fix + type-check
 uv run poe check          # format-check + lint + type-check + test
 uv run poe pre-commit     # quality + test (run before committing)
+```
+
+## Pre-commit Hooks
+
+Install pre-commit hooks for automatic code quality checks:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install git hooks
+pre-commit install
+
+# Run manually on all files
+pre-commit run --all-files
+```
+
+Pre-commit hooks include:
+- Ruff linting and formatting
+- Black formatting
+- MyPy type checking
+- Trailing whitespace removal
+- YAML/JSON validation
+- Security scanning with Bandit
+
+## CI/CD
+
+GitHub Actions workflows are configured in `.github/workflows/`:
+
+### Continuous Integration (CI)
+Runs on push and pull requests:
+- **Lint & Format**: Ruff and Black checks
+- **Type Check**: MyPy static analysis
+- **Tests**: Unit and integration tests (Python 3.11 & 3.12)
+- **Security**: Bandit security scanning
+- **Build**: Package build verification
+- **CodeQL**: Security vulnerability scanning
+
+### Continuous Deployment (CD)
+Triggered by version tags (`v*.*.*`):
+- **Build & Push**: Docker image to GitHub Container Registry
+- **Deploy Staging**: Auto-deploy to staging environment
+- **Deploy Production**: Deploy to production (requires approval)
+- **Release**: Create GitHub release with changelog
+
+**Trigger deployment**:
+```bash
+# Create and push version tag
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+## Docker
+
+Build and run with Docker:
+
+```bash
+# Build image
+docker build -t barbershop-agent .
+
+# Run API server
+docker run -p 8005:8005 -e OPENAI_API_KEY=sk-... barbershop-agent
+
+# Run with docker-compose (create docker-compose.yml first)
+docker-compose up
 ```
 
 ## Project Structure
