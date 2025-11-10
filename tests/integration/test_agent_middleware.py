@@ -4,7 +4,6 @@ import pytest
 
 from src.agent.agent import create_booking_agent
 from src.agent.middleware.booking_context import booking_context_middleware
-from src.agent.middleware.business_rules import business_rules_middleware
 from src.agent.middleware.usage_tracking import usage_tracking_middleware
 
 
@@ -29,15 +28,6 @@ class TestAgentStructure:
         # Agent should have checkpointer for state management
         assert hasattr(agent, "checkpointer")
         assert agent.checkpointer is not None
-
-    def test_business_rules_middleware_configured(self):
-        """Test that business rules middleware has correct configuration."""
-        assert business_rules_middleware.min_booking_hours == 2
-        assert business_rules_middleware.max_booking_days == 90
-        assert business_rules_middleware.min_cancellation_hours == 24
-        assert business_rules_middleware.business_hours_start == 9
-        assert business_rules_middleware.business_hours_end == 18
-        assert 6 in business_rules_middleware.blocked_days  # Sunday
 
     def test_booking_context_middleware_exists(self):
         """Test that booking context middleware is properly initialized."""
@@ -77,25 +67,6 @@ class TestMiddlewareIsolation:
 
         assert stats1["total_calls"] == 0
         assert stats2["total_calls"] == 0
-
-    def test_business_rules_customizable(self):
-        """Test that business rules can be customized per instance."""
-        from src.agent.middleware.business_rules import BusinessRulesMiddleware
-
-        custom_rules = BusinessRulesMiddleware(
-            min_booking_hours=4,
-            max_booking_days=30,
-            business_hours_start=10,
-            business_hours_end=20,
-            blocked_days=[5, 6],  # Sat, Sun
-        )
-
-        assert custom_rules.min_booking_hours == 4
-        assert custom_rules.max_booking_days == 30
-        assert custom_rules.business_hours_start == 10
-        assert custom_rules.business_hours_end == 20
-        assert 5 in custom_rules.blocked_days
-        assert 6 in custom_rules.blocked_days
 
 
 class TestAgentToolsIntegration:

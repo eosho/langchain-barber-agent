@@ -172,10 +172,9 @@ The agent uses the following middleware (in execution order):
 
 1. **booking_context** - Injects current date and business context
 2. **conversation_summary** - Trims conversation history
-3. **business_rules** - Validates booking policies (2h minimum, 24h cancellation, business hours)
-4. **PII masking** - Masks emails and credit card numbers
-5. **usage_tracking** - Tracks token consumption
-6. **human_in_the_loop** - Requires approval for sensitive operations
+3. **PII masking** - Masks emails and credit card numbers
+4. **usage_tracking** - Tracks token consumption
+5. **human_in_the_loop** - Requires approval for sensitive operations (`create_booking`, `cancel_booking`, `update_booking`)
 
 See [MIDDLEWARE.md](docs/MIDDLEWARE.md) for details.
 

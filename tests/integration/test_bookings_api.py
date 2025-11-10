@@ -83,7 +83,7 @@ class TestBookingsAPI:
             assert response.json()["notes"] == "Updated notes via test"
 
     async def test_cancel_booking(self, client: AsyncClient):
-        """Test POST /api/v1/bookings/{booking_id}/cancel."""
+        """Test DELETE /api/v1/bookings/{booking_id} (cancel via soft delete)."""
         # Create a booking to cancel
         customer_response = await client.get("/api/v1/customers?limit=1")
         service_response = await client.get("/api/v1/services?limit=1")
@@ -101,13 +101,9 @@ class TestBookingsAPI:
             if create_response.status_code == 201:
                 booking_id = create_response.json()["id"]
 
-                # Cancel it
-                response = await client.post(f"/api/v1/bookings/{booking_id}/cancel")
-                assert response.status_code == 200
-                assert response.json()["status"] == "cancelled"
-
-                # Clean up - delete the cancelled booking
-                await client.delete(f"/api/v1/bookings/{booking_id}")
+                # Cancel it (DELETE sets status to 'cancelled')
+                response = await client.delete(f"/api/v1/bookings/{booking_id}")
+                assert response.status_code == 204  # DELETE returns 204 No Content
 
     async def test_check_availability(self, client: AsyncClient):
         """Test POST /api/v1/bookings/availability/."""
