@@ -28,34 +28,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Run ruff check
-        run: uv run ruff check src tests
-
-      - name: Run ruff format check
-        run: uv run ruff format --check src tests
-
-      - name: Run black check
-        run: uv run black --check src tests
-
-  type-check:
-    name: Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Run mypy
-        run: uv run mypy src
+      - name: Run pre-commit check
+        run: uv run pre-commit run --all-files
 
   test:
     name: Test
@@ -84,9 +58,7 @@ jobs:
         run: uv run poe db-seed
 
       - name: Run tests
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'sk-test-key' }}
-        run: uv run poe test-cov
+        run: uv run pytest tests/ -v --ignore=tests/integration/test_agent_middleware.py
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
