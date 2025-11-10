@@ -14,7 +14,7 @@ graph LR
     UT --> HITL[HumanInLoop]
     HITL --> TOOL[Tool Execution]
     TOOL --> RESPONSE[Response]
-    
+
     style BC fill:#e3f2fd
     style CS fill:#e3f2fd
     style PII fill:#fff3e0
@@ -164,7 +164,7 @@ sequenceDiagram
     participant UT as UsageTracking
     participant HITL as HumanInLoop
     participant Tool
-    
+
     User->>BC: Message
     BC->>BC: Inject date/context
     BC->>CS: Enhanced state
@@ -175,12 +175,12 @@ sequenceDiagram
     Model->>UT: Response
     UT->>UT: Track tokens
     UT->>HITL: Check for tool calls
-    
+
     alt Sensitive Tool
         HITL->>User: Request approval
         User->>HITL: Approve/Reject
     end
-    
+
     HITL->>Tool: Execute if approved
     Tool->>User: Result
 ```
@@ -239,12 +239,12 @@ class CustomMiddleware(AgentMiddleware):
     @property
     def name(self) -> str:
         return "custom_middleware"
-    
+
     def before_model(self, state, config):
         # Modify state before LLM call
         state["custom_field"] = "value"
         return state
-    
+
     def after_model(self, output, state, config):
         # Process LLM response
         print(f"Model generated: {output}")
