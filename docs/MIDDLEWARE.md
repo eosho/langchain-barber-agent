@@ -1,282 +1,212 @@
 # Middleware Architecture
 
-Middleware components that provide cross-cutting concerns for the booking agent using LangChain v1's middleware pattern.
+Middleware components provide cross-cutting concerns and tool execution for the booking agent using LangChain v1's middleware pattern.
+
+## Overview
+
+**Tools are part of middlewares** rather than standalone components. Each middleware:
+- Defines its own tools
+- Manages state related to those tools
+- Wraps model calls to inject context
+- Returns `Command` with state updates
+
+```mermaid
+graph TB
+    USER[User Input] --> AGENT[Agent Node]
+    AGENT --> MODEL{LLM Decision}
+    MODEL -->|Tool Calls?| CHECK{Booking Operation?}
+    CHECK -->|Yes| APPROVAL[Approval Node - HITL]
+    CHECK -->|No| TOOLS[Tool Node]
+    APPROVAL -->|Approved| TOOLS
+    APPROVAL -->|Denied| AGENT
+    TOOLS -->|Customer Lookup| CL[CustomerLookupMiddleware]
+    TOOLS -->|Service Browse| SC[ServiceCatalogMiddleware]
+    TOOLS -->|Barber Info| BI[BarberInfoMiddleware]
+    TOOLS -->|Check Availability| AV[AvailabilityMiddleware]
+    TOOLS -->|Booking Ops| BK[BookingMiddleware]
+    CL --> AGENT
+    SC --> AGENT
+    BI --> AGENT
+    AV --> AGENT
+    BK --> AGENT
+    MODEL -->|No Tools| END[END]
+
+    style APPROVAL fill:#ffcdd2
+    style CL fill:#e3f2fd
+    style SC fill:#c8e6c9
+    style BI fill:#fff9c4
+    style AV fill:#f3e5f5
+    style BK fill:#ffcdd2
+```
 
 ## Middleware Stack
 
-```mermaid
-graph LR
-    USER[User Input] --> BR[BusinessRules]
-    BR --> CS[ConversationSummary]
-    CS --> PII[PII Masking]
-    PII --> MODEL[LLM Call]
-    MODEL --> UT[UsageTracking]
-    UT --> HITL[HumanInLoop]
-    HITL --> TOOL[Tool Execution]
-    TOOL --> RESPONSE[Response]
+### Tool-Integrated Middlewares
 
-    style BR fill:#ffcdd2
-    style CS fill:#e3f2fd
-    style PII fill:#fff3e0
-    style UT fill:#f3e5f5
-    style HITL fill:#ffcdd2
+| Middleware | Tools | State Managed | Purpose |
+|------------|-------|---------------|---------|
+| **CustomerLookupMiddleware** | `lookup_customer` | `customer_info` | Customer identification |
+| **ServiceCatalogMiddleware** | `browse_services` | `selected_service` | Service catalog |
+| **BarberInfoMiddleware** | `list_barbers`<br>`get_barber_by_name`<br>`find_barbers_by_specialty` | `selected_barber` | Barber information |
+| **AvailabilityMiddleware** | `check_availability` | `availability_info` | Time slot checking |
+| **BookingMiddleware** | `create_booking`<br>`modify_booking`<br>`cancel_booking`<br>`lookup_bookings` | `booking_info` | Booking operations<br>**(HITL-protected)** |
+
+### Cross-Cutting Middlewares
+
+| Middleware | Purpose | Hook |
+|------------|---------|------|
+| **BusinessRulesMiddleware** | Policy enforcement | `before_tool_call` |
+| **ConversationSummaryMiddleware** | Memory management | `before_model` |
+| **UsageTrackingMiddleware** | Token tracking | `after_model` |
+
+```python
+class CustomerLookupState(AgentState):
+    customer_info: Annotated[NotRequired[CustomerInfo], OmitFromInput]
 ```
 
-## Middleware Hooks
+## Tool Details
 
-| Hook | When | Used By |
-|------|------|---------|
-| `before_model` | Before each LLM call | ConversationSummary, PII |
-| `after_model` | After LLM response | UsageTracking, HumanInLoop |
-| `before_tool_call` | Before tool execution | BusinessRules |
+### CustomerLookupMiddleware
+- **Tools**: `lookup_customer`
+- **State**: `customer_info` (customer_id, name, email, phone, preferences)
+- **Purpose**: Customer identification by email, phone, or ID
 
-## Components
+### ServiceCatalogMiddleware
+- **Tools**: `browse_services`
+- **State**: `selected_service` (service_id, name, description, price, duration)
+- **Purpose**: Service catalog browsing
+
+### BarberInfoMiddleware
+- **Tools**: `list_barbers`, `get_barber_by_name`, `find_barbers_by_specialty`
+- **State**: `selected_barber` (barber_id, name, email, phone, specialties, is_active)
+- **Purpose**: Barber information and specialty search
+- **Note**: Use `AvailabilityMiddleware.check_availability` for time slots
+
+### AvailabilityMiddleware
+- **Tools**: `check_availability`
+- **State**: `availability_info` (date, available_slots, total_available)
+- **Purpose**: Check appointment time slot availability
+
+### BookingMiddleware (HITL-Protected)
+- **Tools**: `create_booking`, `modify_booking`, `cancel_booking`, `lookup_bookings`
+- **State**: `booking_info` (booking_id, customer_id, service_id, barber_id, booking_date, booking_time, status, notes)
+- **Purpose**: Booking operations with human approval required
+
+---
+
+## Cross-Cutting Middlewares
 
 ### BusinessRulesMiddleware
-**Location**: `src/agent/middleware/business_rules.py`
-
-Enforces booking policies and business rules BEFORE tool execution to prevent violations.
-
-**Policies Enforced**:
-- ✅ 2-hour minimum notice for same-day bookings
-- ✅ Same-day booking cutoff (2:00 PM default)
-- ✅ 24-hour cancellation policy
-- ✅ Maximum advance booking (14 days default)
-- ✅ Business hours validation
-- ✅ No past date bookings
-
-**Validated Tools**:
-- `create_booking`: Validates date/time against all policies
-- `cancel_booking`: Validates cancellation notice requirement
-- `update_booking`: Validates new date/time if changed
-
-**Error Response Format**:
-```python
-{
-    "error": "Same-day bookings require at least 2.0 hours notice",
-    "policy": "minimum_notice",
-    "hours_needed": 2.0,
-    "hours_available": 1.5,
-    "suggestion": "Please book for 2025-11-11 15:00 or later"
-}
-```
-
-**Benefits**:
-- 🛡️ Prevents policy violations before API calls
-- 💰 Reduces unnecessary database queries
-- 🤖 Provides structured feedback for LLM
-- 📝 Centralized policy enforcement
-
----
+- **Location**: `src/agent/middleware/business_rules.py`
+- **Hook**: `before_tool_call`
+- **Validated Tools**: `create_booking`, `cancel_booking`, `modify_booking`
+- **Policies**: 2hr same-day notice, 24hr cancellation, 14-day max advance, business hours validation
 
 ### ConversationSummaryMiddleware
-**Location**: `src/agent/middleware/conversation_summary.py`
-
-Manages conversation memory by trimming message history when it exceeds limits.
-
-**Configuration**:
-- `max_messages`: 20 (default)
-
-**Behavior**:
-- Preserves system messages
-- Adds summary message for context
-- Prevents token bloat in long conversations
-
----
-
-### PIIMiddleware (Built-in)
-**Location**: `langchain.agents.middleware.PIIMiddleware`
-
-Redacts or masks Personally Identifiable Information before sending to LLM.
-
-**Current Configuration**:
-```python
-PIIMiddleware("email", strategy="mask", apply_to_input=True)
-PIIMiddleware("credit_card", strategy="mask", apply_to_input=True)
-```
-
-**PII Types**:
-- `email`: Email addresses → `[MASKED_EMAIL]`
-- `credit_card`: Card numbers → `****-****-****-1234`
-- `ip`: IP addresses → `[MASKED_IP]`
-- `mac_address`, `url`: Additional types available
-
-**Strategies**:
-- `mask`: Partially obscure (e.g., last 4 digits)
-- `redact`: Replace with `[REDACTED_TYPE]`
-- `hash`: Replace with deterministic hash
-- `block`: Raise exception when detected
-
----
+- **Hook**: `before_model`
+- **Purpose**: Trims message history when exceeding token limits
 
 ### UsageTrackingMiddleware
-**Location**: `src/agent/middleware/usage_tracking.py`
-
-Tracks LLM token consumption for monitoring and cost analysis.
-
-**Tracks**:
-- Input tokens
-- Output tokens
-- Total tokens per call
-- Session totals
-
-**Usage**:
-```python
-# Get current statistics
-stats = usage_tracking_middleware.get_stats()
-# {'total_input_tokens': 1200, 'total_output_tokens': 450, 'total_calls': 5}
-
-# Reset for new session
-usage_tracking_middleware.reset_stats()
-```
+- **Hook**: `after_model`
+- **Purpose**: Tracks LLM token usage and costs
 
 ---
 
-### HumanInTheLoopMiddleware (Built-in)
-**Location**: `langchain.agents.middleware.HumanInTheLoopMiddleware`
+## HITL (Human-in-the-Loop) Approval
 
-Pauses execution for human approval on sensitive operations.
-
-**Configuration**:
-```python
-HumanInTheLoopMiddleware(
-    interrupt_on={
-        "create_booking": {"allowed_decisions": ["approve", "reject"]},
-        "cancel_booking": {"allowed_decisions": ["approve", "reject"]},
-        "modify_booking": {"allowed_decisions": ["approve", "reject"]},
-    },
-    description_prefix="Booking action pending approval"
-)
-```
-
-**Flow**:
-1. Agent decides to call sensitive tool
-2. Execution pauses with `__interrupt__` flag
-3. User reviews action details
-4. User approves or rejects
-5. Execution resumes or cancels
-
-**Resumption**:
-```python
-from langchain_core.command import Command
-
-# Approve and continue
-agent.invoke(
-    Command(resume={"decisions": [{"type": "approve"}]}),
-    config={"configurable": {"thread_id": "session_123"}}
-)
-```
-
-**Note**: Requires `MemorySaver` checkpointer for state persistence.
-
----
-
-## Execution Order
+Booking operations require human approval before execution via graph-level routing:
 
 ```mermaid
-sequenceDiagram
-    participant User
-    participant BC as BookingContext
-    participant CS as ConversationSummary
-    participant PII
-    participant Model as LLM
-    participant UT as UsageTracking
-    participant HITL as HumanInLoop
-    participant Tool
+graph LR
+    A[Agent] -->|Booking Op?| B{should_continue}
+    B -->|Yes| C[Approval Node]
+    B -->|No| D[Tool Node]
+    C -->|User Approves| D
+    C -->|User Denies| A
+    D --> A
 
-    User->>BC: Message
-    BC->>BC: Inject date/context
-    BC->>CS: Enhanced state
-    CS->>CS: Trim history
-    CS->>PII: Managed history
-    PII->>PII: Mask sensitive data
-    PII->>Model: Sanitized input
-    Model->>UT: Response
-    UT->>UT: Track tokens
-    UT->>HITL: Check for tool calls
-
-    alt Sensitive Tool
-        HITL->>User: Request approval
-        User->>HITL: Approve/Reject
-    end
-
-    HITL->>Tool: Execute if approved
-    Tool->>User: Result
+    style C fill:#ffcdd2
 ```
 
-## Testing
+**Implementation**: `src/agent/graph.py`
+- `approval_node()`: Uses `interrupt()` to pause execution
+- `should_continue()`: Routes booking ops to approval
+- `route_after_approval()`: Handles approve/reject decisions
 
-### Test PII Masking
+**Protected Operations**: `create_booking`, `modify_booking`, `cancel_booking`
+
+---
+
+## Key Patterns
+
+### InjectedToolCallId
+Tools use `Annotated[str, InjectedToolCallId]` - LangGraph injects automatically:
 ```python
-# Email
-agent.invoke({"messages": [{"role": "user", "content": "Email: john@example.com"}]})
-# LLM sees: "Email: [MASKED_EMAIL]"
-
-# Credit card
-agent.invoke({"messages": [{"role": "user", "content": "Card: 4532-1234-5678-9010"}]})
-# LLM sees: "Card: ****-****-****-9010"
+@tool
+async def my_tool(param: str, tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+    return Command(update={"messages": [ToolMessage(content="...", tool_call_id=tool_call_id)]})
 ```
 
-### Test Usage Tracking
+### Command Return Pattern
+Tools return `Command(update={...})` with state and messages:
 ```python
-# Run conversation
-agent.invoke({"messages": [...]})
-
-# Check statistics
-stats = usage_tracking_middleware.get_stats()
-print(f"Total tokens: {stats['total_tokens']}")
-print(f"Total calls: {stats['total_calls']}")
-```
-
-### Test Human-in-the-Loop
-```python
-# First call - triggers interrupt
-result = agent.invoke(
-    {"messages": [{"role": "user", "content": "Book me for tomorrow 2pm"}]},
-    config={"configurable": {"thread_id": "test_123"}}
-)
-
-# Check interrupt
-if "__interrupt__" in result:
-    print(f"Pending: {result['__interrupt__']}")
-
-# Resume with approval
-result = agent.invoke(
-    Command(resume={"decisions": [{"type": "approve"}]}),
-    config={"configurable": {"thread_id": "test_123"}}
+return Command(
+    update={
+        "customer_info": customer_data,
+        "messages": [ToolMessage(content="Found customer", tool_call_id=tool_call_id)]
+    }
 )
 ```
+
+### State Schema Extension
+Middlewares extend `AgentState` with `TypedDict` fields:
+```python
+class MyState(AgentState):
+    my_info: Annotated[NotRequired[MyInfo], OmitFromInput]
+```
+
+---
 
 ## Adding Custom Middleware
 
-Extend `AgentMiddleware` and implement desired hooks:
+```python
+from langchain.agents.middleware import AgentMiddleware, AgentState
+from langchain.tools import InjectedToolCallId
+from langchain_core.tools import tool
+from langgraph.types import Command
+
+class MyMiddleware(AgentMiddleware):
+    state_schema = MyState  # Extend AgentState
+
+    def __init__(self):
+        @tool(description="My tool")
+        async def my_tool(param: str, tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+            result = process(param)
+            return Command(update={"my_info": result, "messages": [ToolMessage(...)]})
+
+        self.tools = [my_tool]
+
+# Add to agent (src/agent/agent.py)
+middlewares = [
+    # ... existing middlewares
+    MyMiddleware(),
+]
+```
+
+---
+
+## Testing
 
 ```python
-from langchain.agents.middleware import AgentMiddleware
+# Test tool execution
+result = await agent.ainvoke({
+    "messages": [{"role": "user", "content": "lookup john@example.com"}]
+})
+assert "customer_info" in result
 
-class CustomMiddleware(AgentMiddleware):
-    @property
-    def name(self) -> str:
-        return "custom_middleware"
-
-    def before_model(self, state, config):
-        # Modify state before LLM call
-        state["custom_field"] = "value"
-        return state
-
-    def after_model(self, output, state, config):
-        # Process LLM response
-        print(f"Model generated: {output}")
-        return output
-
-# Add to agent
-agent = create_agent(
-    model=llm,
-    tools=tools,
-    middleware=[
-        conversation_summary_middleware,
-        CustomMiddleware(),  # Your middleware
-        usage_tracking_middleware,
-    ]
-)
+# Test HITL approval
+config = {"configurable": {"thread_id": "test-123"}}
+result = await agent.ainvoke({"messages": [...]}, config=config)
+if "__interrupt__" in result:
+    result = await agent.ainvoke(Command(resume={"decisions": [{"type": "approve"}]}), config=config)
 ```

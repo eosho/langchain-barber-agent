@@ -10,31 +10,37 @@ from langchain.agents import AgentState
 
 
 class BookingAgentState(AgentState):
-    """Extended agent state with booking-specific fields."""
+    """Extended agent state with booking-specific fields.
 
-    # Business context
+    Inherits messages from AgentState and adds booking context fields.
+    All fields are NotRequired to allow incremental state building.
+    Tools can update state using Command(update={...}).
+    """
+
+    # Business context (shared, read-only)
     business_name: NotRequired[str]
-    current_date: NotRequired[str]  # Current date in YYYY-MM-DD format for context
+    current_date: NotRequired[str]  # YYYY-MM-DD
 
     # Customer information
-    customer_id: NotRequired[str]  # UUID string
+    customer_id: NotRequired[str]  # UUID
     customer_name: NotRequired[str]
     customer_email: NotRequired[str]
     customer_phone: NotRequired[str]
 
     # Service selection
-    service_id: NotRequired[str]  # UUID string
+    service_id: NotRequired[str]  # UUID
     service_name: NotRequired[str]
     service_price: NotRequired[float]
-    service_duration: NotRequired[int]
+    service_duration: NotRequired[int]  # minutes
 
     # Booking details
-    booking_id: NotRequired[str]  # UUID string
-    booking_date: NotRequired[str]
-    booking_time: NotRequired[str]
-    stylist_name: NotRequired[str]
+    booking_id: NotRequired[str]  # UUID
+    booking_date: NotRequired[str]  # YYYY-MM-DD
+    booking_time: NotRequired[str]  # HH:MM
+    barber_id: NotRequired[str]  # UUID
+    barber_name: NotRequired[str]
     booking_notes: NotRequired[str]
-    booking_status: NotRequired[str]
+    booking_status: NotRequired[str]  # scheduled, cancelled, completed
 
     # Availability
     available_slots: NotRequired[list[dict[str, str]]]
@@ -45,5 +51,10 @@ class BookingAgentState(AgentState):
     cancellation_allowed: NotRequired[bool]
 
     # Conversation flow
-    conversation_stage: NotRequired[str]
+    conversation_stage: NotRequired[str]  # greeting, collecting_info, confirming, completed
     next_action: NotRequired[str]
+
+    # Human-in-the-Loop approval
+    pending_action: NotRequired[str]  # create_booking, cancel_booking, modify_booking
+    action_details: NotRequired[dict]  # Details of the pending action for approval
+    approval_required: NotRequired[bool]  # Whether approval is needed

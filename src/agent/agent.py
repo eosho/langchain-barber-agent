@@ -14,19 +14,17 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from src.agent.llm.registry import get_llm
 from src.agent.middleware import (
-    business_rules_middleware,
-    conversation_summary_middleware,
-    usage_tracking_middleware,
+    AvailabilityMiddleware,
+    BarberInfoMiddleware,
+    BookingMiddleware,
+    BusinessRulesMiddleware,
+    ConversationSummaryMiddleware,
+    CustomerLookupMiddleware,
+    ServiceCatalogMiddleware,
+    UsageTrackingMiddleware,
 )
 from src.agent.prompt import BOOKING_AGENT_SYSTEM_PROMPT
 from src.agent.state import BookingAgentState
-from src.agent.tools import (
-    get_availability_tools,
-    get_barber_tools,
-    get_booking_tools,
-    get_customer_tools,
-    get_service_tools,
-)
 
 
 def create_booking_agent(business_name: str = "The Barbershop") -> Any:
@@ -46,15 +44,6 @@ def create_booking_agent(business_name: str = "The Barbershop") -> Any:
     # Get LLM
     llm = get_llm()
 
-    # Collect all tools from sub-agents
-    tools = [
-        *get_customer_tools(),
-        *get_service_tools(),
-        *get_barber_tools(),
-        *get_availability_tools(),
-        *get_booking_tools(),
-    ]
-
     # Format system prompt with current context
     current_date = datetime.now().strftime("%Y-%m-%d")
     formatted_prompt = BOOKING_AGENT_SYSTEM_PROMPT.format(
@@ -64,15 +53,20 @@ def create_booking_agent(business_name: str = "The Barbershop") -> Any:
     # Create agent with middleware
     agent: Any = create_agent(
         model=llm,
-        tools=tools,
+        tools=[],
         system_prompt=formatted_prompt,
-        state_schema=BookingAgentState,  # Use custom state schema
+        state_schema=BookingAgentState,
         middleware=[
-            business_rules_middleware,
-            conversation_summary_middleware,
+            AvailabilityMiddleware(),
+            BarberInfoMiddleware(),
+            BookingMiddleware(),
+            BusinessRulesMiddleware(),
+            ConversationSummaryMiddleware(max_messages=20),
+            CustomerLookupMiddleware(),
+            ServiceCatalogMiddleware(),
             PIIMiddleware("email", strategy="mask", apply_to_input=True),
             PIIMiddleware("credit_card", strategy="mask", apply_to_input=True),
-            usage_tracking_middleware,
+            UsageTrackingMiddleware(),
             HumanInTheLoopMiddleware(
                 interrupt_on={
                     "create_booking": {"allowed_decisions": ["approve", "reject"]},

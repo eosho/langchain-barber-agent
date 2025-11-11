@@ -91,7 +91,3 @@ class UsageTrackingMiddleware(AgentMiddleware):
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.total_calls = 0
-
-
-# Create singleton instance
-usage_tracking_middleware = UsageTrackingMiddleware()

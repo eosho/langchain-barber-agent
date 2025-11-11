@@ -154,7 +154,7 @@ class TestUsageTrackingSingleton:
 
     def test_singleton_instance_exists(self):
         """Test that singleton instance is available."""
-        from src.agent.middleware.usage_tracking import usage_tracking_middleware
+        from src.agent.middleware.usage_tracking import UsageTrackingMiddleware
 
-        assert usage_tracking_middleware is not None
-        assert isinstance(usage_tracking_middleware, UsageTrackingMiddleware)
+        assert UsageTrackingMiddleware() is not None
+        assert isinstance(UsageTrackingMiddleware(), UsageTrackingMiddleware)

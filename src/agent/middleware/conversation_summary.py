@@ -72,7 +72,3 @@ class ConversationSummaryMiddleware(AgentMiddleware):
             trimmed_messages.insert(len(system_messages), summary_msg)
 
         return {"messages": trimmed_messages}
-
-
-# Create singleton instance with default settings
-conversation_summary_middleware = ConversationSummaryMiddleware(max_messages=20)

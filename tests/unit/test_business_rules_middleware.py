@@ -181,7 +181,7 @@ class TestBusinessRulesMiddlewareSingleton:
 
     def test_singleton_instance_exists(self):
         """Test that singleton instance is importable."""
-        from src.agent.middleware.business_rules import business_rules_middleware
+        from src.agent.middleware.business_rules import BusinessRulesMiddleware
 
-        assert business_rules_middleware is not None
-        assert isinstance(business_rules_middleware, BusinessRulesMiddleware)
+        assert BusinessRulesMiddleware() is not None
+        assert isinstance(BusinessRulesMiddleware(), BusinessRulesMiddleware)

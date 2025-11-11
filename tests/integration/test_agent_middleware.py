@@ -3,7 +3,7 @@
 import pytest
 
 from src.agent.agent import create_booking_agent
-from src.agent.middleware.usage_tracking import usage_tracking_middleware
+from src.agent.middleware.usage_tracking import UsageTrackingMiddleware
 
 
 @pytest.fixture
@@ -30,11 +30,11 @@ class TestAgentStructure:
 
     def test_usage_tracking_middleware_exists(self):
         """Test that usage tracking middleware is properly initialized."""
-        assert usage_tracking_middleware is not None
-        assert usage_tracking_middleware.name == "usage_tracking"
+        assert UsageTrackingMiddleware() is not None
+        assert UsageTrackingMiddleware().name == "usage_tracking"
 
         # Can get stats
-        stats = usage_tracking_middleware.get_stats()
+        stats = UsageTrackingMiddleware().get_stats()
         assert "total_input_tokens" in stats
         assert "total_output_tokens" in stats
         assert "total_tokens" in stats
