@@ -7,7 +7,7 @@ AI-powered barbershop booking system architecture using LangChain agents with Fa
 ```mermaid
 graph TB
     subgraph "Client Layer"
-        UI[Chainlit UI<br/>Port 8006]
+        CLI[CLI Agent<br/>run.py]
         EXT[External Apps<br/>HTTP/REST]
     end
 
@@ -30,10 +30,10 @@ graph TB
     end
 
     subgraph "Data Layer"
-        DB[(SQLite/PostgreSQL<br/>4 tables)]
+        DB[(SQLite/PostgreSQL<br/>5 tables)]
     end
 
-    UI -->|WebSocket| AGENT
+    CLI -->|Terminal| AGENT
     EXT -->|HTTP| ROUTER
     MODELS -->|SQL| DB
 
@@ -47,9 +47,8 @@ graph TB
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | **Agent** | LangChain v1 `create_agent` | Conversational booking logic |
-| **LLM** | OpenAI GPT-4 | Natural language understanding |
+| **LLM** | GPT-4-mini | Natural language understanding |
 | **Middleware** | LangChain middleware pattern | Context, PII, tracking, approval |
-| **UI** | Chainlit | Chat interface |
 | **API** | FastAPI + Uvicorn | REST endpoints |
 | **Database** | SQLAlchemy + SQLite/PostgreSQL | Data persistence |
 | **Migrations** | Alembic | Schema management |
@@ -59,21 +58,6 @@ graph TB
 ### Why create_agent?
 
 Using LangChain's `create_agent` instead of raw LangGraph:
-
-**Pros**:
-- Built-in conversation persistence
-- Automatic streaming responses
-- Native middleware support
-- Less boilerplate code
-- Natural conversational flow
-
-**When to Use LangGraph Instead**:
-- Explicit state machines needed
-- Complex multi-agent orchestration
-- Strict workflow enforcement
-- Visual debugging required
-
-### Agent Components
 
 ```python
 agent = create_agent(
@@ -96,7 +80,7 @@ agent = create_agent(
 - `check_policies` - Query business policies
 
 **Middleware** (see [MIDDLEWARE.md](MIDDLEWARE.md)):
-1. BookingContext - Inject date/business context
+1. BusinessRules - Enforce booking policies before tool execution
 2. ConversationSummary - Trim message history
 3. PIIMiddleware (email) - Mask sensitive data
 4. PIIMiddleware (credit_card) - Mask card numbers
@@ -276,7 +260,7 @@ API_PORT=8005
 DATABASE_URL=sqlite:///./barbershop.db
 
 # Agent
-AGENT_MODEL=gpt-4
+AGENT_MODEL=gpt-4-mini
 AGENT_TEMPERATURE=0.7
 ```
 
@@ -351,9 +335,6 @@ class CustomTool(BaseTool):
 ```bash
 # Start API server
 uv run poe dev-api
-
-# Start chat UI
-uv run poe dev-ui
 
 # Run agent CLI
 uv run poe dev-agent
