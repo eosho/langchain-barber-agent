@@ -27,7 +27,6 @@ class Settings(BaseSettings):
 
     Attributes:
         app_name: Name of the application.
-        app_version: Current version of the application.
         environment: Deployment environment (development, staging, production).
         debug: Enable debug mode with additional logging.
         llm_provider: LLM provider to use (openai or azure_openai).
@@ -66,7 +65,6 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = Field(default="Tony's Barbershop Booking Agent")
-    app_version: str = Field(default="0.1.0")
     environment: str = Field(default="development")
     debug: bool = Field(default=True)
 

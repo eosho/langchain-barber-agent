@@ -299,7 +299,6 @@ barbershop/
 │   │   ├── models/         # Database models & schemas
 │   │   └── routers/        # API endpoints
 │   ├── core/               # Core configuration
-│   └── ui/                 # Chainlit chat interface
 ├── tests/
 │   ├── unit/               # Unit tests
 │   └── integration/        # Integration tests
