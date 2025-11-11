@@ -1,28 +1,32 @@
-"""Version information for the barbershop booking agent.
+"""Version info for the barbershop booking agent.
 
-Version is read from pyproject.toml to maintain a single source of truth.
+Reads version from pyproject.toml so there's a single source of truth.
 """
 
-import tomllib
+from __future__ import annotations
+
+import tomllib  # Python 3.11+
+from functools import lru_cache
 from pathlib import Path
 
 
+@lru_cache(maxsize=1)
 def get_version() -> str:
-    """Get version from pyproject.toml.
+    """Return version string from pyproject.toml (e.g., '0.1.1')."""
 
-    Returns:
-        Version string (e.g., "0.1.1").
-
-    Raises:
-        FileNotFoundError: If pyproject.toml not found.
-        KeyError: If version key not found in pyproject.toml.
-    """
-    # Navigate from src/__version__.py -> src/ -> project_root/
-    pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+    pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
     with open(pyproject_path, "rb") as f:
-        pyproject = tomllib.load(f)
-    return pyproject["project"]["version"]
+        data: dict[str, object] = tomllib.load(f)
+
+    project = data.get("project")
+    if not isinstance(project, dict):
+        raise KeyError("Missing [project] table in pyproject.toml")
+
+    version = project.get("version")
+    if not isinstance(version, str):
+        raise KeyError("Missing or invalid 'version' in [project]")
+
+    return version
 
 
 __version__ = get_version()
-

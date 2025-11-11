@@ -11,14 +11,12 @@ Example:
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from src import __version__
-from src.api.models.schemas import ErrorResponse, HealthResponse
+from src.api.models.schemas import HealthResponse
 from src.api.routers import barbers, bookings, customers, services
 from src.core.config import get_settings
 from src.core.database import close_db, init_db

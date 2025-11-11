@@ -5,8 +5,11 @@ AI-powered barbershop booking system with conversational interface, built on Lan
 ## Features
 
 - **Conversational AI Agent**: Natural language booking interface powered by LangChain
+- **Middleware-Integrated Tools**: Tools are part of middlewares with state management
 - **Business Rules Enforcement**: Validates bookings (2-hour minimum notice, 24-hour cancellation policy)
-- **Middleware Stack**: PII masking, usage tracking, context injection, human-in-the-loop
+- **Human-in-the-Loop**: Manual approval required for booking operations (create, cancel, modify)
+- **Middleware Stack**: Customer lookup, service catalog, barber info, availability, booking operations
+- **Cross-Cutting Concerns**: Business rules, conversation summary, usage tracking
 - **REST API**: FastAPI backend for customers, barbers, services, and bookings
 - **Async SQLAlchemy**: Database layer with Alembic migrations
 
@@ -36,49 +39,76 @@ AI-powered barbershop booking system with conversational interface, built on Lan
 - ✅ "Reschedule my booking to next Tuesday"
 - ❌ "Change my booking to today at 5pm" (same-day after cutoff)
 
-### Policy Enforcement Flow
-
-```mermaid
-flowchart TD
-    Start([User: Book today at 2pm]) --> CheckTime{Check current time}
-
-    CheckTime -->|After 2pm cutoff| Reject[❌ Same-day cutoff passed]
-    CheckTime -->|Before cutoff| CheckNotice{At least 2h notice?}
-
-    CheckNotice -->|No| Reject
-    CheckNotice -->|Yes| CheckAvail[Check barber availability]
-
-    CheckAvail --> IsAvail{Barber available?}
-    IsAvail -->|No| Suggest[Suggest alternative times]
-    IsAvail -->|Yes| Check24h{Cancellation: 24h notice?}
-
-    Reject --> Offer[Offer tomorrow or later]
-    Offer --> End([User chooses alternative])
-
-    Check24h -->|No| Warn[⚠️ Cannot cancel within 24h]
-    Check24h -->|Yes| HITL[Human-in-Loop Approval]
-
-    HITL --> Approved{User approves?}
-    Approved -->|Yes| Success[✅ Booking created]
-    Approved -->|No| Cancelled([Booking cancelled])
-
-    Success --> End
-    Suggest --> End
-    Warn --> End
-
-    style Reject fill:#ffcdd2
-    style Success fill:#c8e6c9
-    style HITL fill:#fff9c4
-    style Warn fill:#ffe0b2
-```
-
 ## Documentation
 
 Detailed documentation available in the `docs/` folder:
 
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture, tech stack, and design decisions
 - **[AGENT_IMPLEMENTATIONS.md](docs/AGENT_IMPLEMENTATIONS.md)** - Agent implementation details and patterns
-- **[MIDDLEWARE.md](docs/MIDDLEWARE.md)** - Middleware components and execution flow
+- **[MIDDLEWARE.md](docs/MIDDLEWARE.md)** - Middleware architecture with tool-integrated pattern
+
+## Architecture
+
+### Middleware-Integrated Tools
+
+In this architecture, **tools are part of middlewares** rather than standalone functions. Each middleware:
+- Defines its own tools
+- Manages state related to those tools
+- Uses `InjectedToolCallId` for proper tool call tracking
+- Returns `Command` with state updates and `ToolMessage`
+
+**Example Pattern**:
+```python
+class CustomerLookupMiddleware(AgentMiddleware):
+    state_schema = CustomerLookupState
+
+    def __init__(self):
+        @tool(description="Look up customer by email, phone, or ID")
+        async def lookup_customer(
+            email: str,
+            phone: str,
+            customer_id: str,
+            tool_call_id: Annotated[str, InjectedToolCallId],
+        ) -> Command:
+            # API call to fetch customer
+            customer = await fetch_customer(email, phone, customer_id)
+
+            # Update state and return
+            return Command(
+                update={
+                    "customer_info": customer,
+                    "messages": [ToolMessage(formatted, tool_call_id=tool_call_id)]
+                }
+            )
+
+        self.tools = [lookup_customer]
+```
+
+### Human-in-the-Loop Flow
+
+Booking operations require manual approval before execution:
+
+```mermaid
+flowchart LR
+    A[User Request] --> B[Agent/LLM]
+    B --> C{Booking Tool?}
+    C -->|No| D[Execute Tool]
+    C -->|Yes| E[⏸️ Pause & Ask User]
+    E -->|Approve| D
+    E -->|Reject| F[Cancel]
+    D --> B
+    F --> B
+
+    style E fill:#fff9c4,stroke:#f57c00,stroke-width:3px
+    style C fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style D fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    style F fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+```
+
+**Operations requiring approval**: `create_booking`, `cancel_booking`, `modify_booking`
+**All other tools execute immediately** without approval.
+
+
 
 ## Development Setup
 
@@ -310,17 +340,40 @@ barbershop/
 
 ## Middleware Stack
 
-The agent uses the following middleware (in execution order):
+The agent uses middleware that integrate tools and manage state:
 
-1. **business_rules** - Enforces booking policies BEFORE tool execution:
-   - 2-hour minimum notice for same-day bookings
-   - 24-hour cancellation policy
-   - Business hours validation
-   - Maximum advance booking window (14 days)
-2. **conversation_summary** - Trims conversation history to prevent context overflow
-3. **PII masking** - Masks emails and credit card numbers before sending to LLM
-4. **usage_tracking** - Tracks token consumption for monitoring
-5. **human_in_the_loop** - Requires approval for sensitive operations (`create_booking`, `cancel_booking`, `update_booking`)
+### Tool-Integrated Middlewares
+
+These middlewares provide both tools AND state management:
+
+1. **CustomerLookupMiddleware** - Customer identification
+   - Tool: `lookup_customer`
+   - State: `customer_info` (name, email, phone, preferences)
+
+2. **ServiceCatalogMiddleware** - Service selection
+   - Tool: `browse_services`
+   - State: `selected_service` (service details, price, duration)
+
+3. **BarberInfoMiddleware** - Barber information
+   - Tools: `list_barbers`, `get_barber_by_name`, `find_barbers_by_specialty`
+   - State: `selected_barber` (barber details, specialties)
+
+4. **AvailabilityMiddleware** - Time slot checking
+   - Tool: `check_availability`
+   - State: `availability_info` (available slots, date)
+
+5. **BookingMiddleware** - Booking operations (HITL-protected)
+   - Tools: `create_booking`, `modify_booking`, `cancel_booking`, `lookup_bookings`
+   - State: `booking_info` (booking details, status)
+   - **Note**: All operations require human approval
+
+### Cross-Cutting Middlewares
+
+These provide infrastructure concerns:
+
+6. **BusinessRulesMiddleware** - Policy enforcement before tool execution
+7. **ConversationSummaryMiddleware** - Memory management (trims history)
+8. **UsageTrackingMiddleware** - Token consumption tracking
 
 See [MIDDLEWARE.md](docs/MIDDLEWARE.md) for details.
 

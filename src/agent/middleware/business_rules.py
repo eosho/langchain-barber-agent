@@ -215,7 +215,3 @@ class BusinessRulesMiddleware(AgentMiddleware):
             return self._validate_booking_creation(validation_input)
 
         return None
-
-
-# Create singleton instance
-business_rules_middleware = BusinessRulesMiddleware()
