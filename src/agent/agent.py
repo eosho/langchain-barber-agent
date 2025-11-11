@@ -14,11 +14,12 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from src.agent.llm.registry import get_llm
 from src.agent.middleware import (
-    booking_context_middleware,
+    business_rules_middleware,
     conversation_summary_middleware,
     usage_tracking_middleware,
 )
 from src.agent.prompt import BOOKING_AGENT_SYSTEM_PROMPT
+from src.agent.state import BookingAgentState
 from src.agent.tools import (
     get_availability_tools,
     get_barber_tools,
@@ -67,8 +68,9 @@ def create_booking_agent(business_name: str = "The Barbershop") -> Any:
         model=llm,
         tools=tools,
         system_prompt=formatted_prompt,
+        state_schema=BookingAgentState,  # Use custom state schema
         middleware=[
-            booking_context_middleware,
+            business_rules_middleware,
             conversation_summary_middleware,
             PIIMiddleware("email", strategy="mask", apply_to_input=True),
             PIIMiddleware("credit_card", strategy="mask", apply_to_input=True),

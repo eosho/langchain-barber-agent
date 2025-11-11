@@ -1,4 +1,4 @@
-# Barbershop Booking Agent
+# 💈 Barbershop Booking Agent
 
 AI-powered barbershop booking system with conversational interface, built on LangChain agents with FastAPI backend.
 
@@ -8,8 +8,229 @@ AI-powered barbershop booking system with conversational interface, built on Lan
 - **Business Rules Enforcement**: Validates bookings (2-hour minimum notice, 24-hour cancellation policy)
 - **Middleware Stack**: PII masking, usage tracking, context injection, human-in-the-loop
 - **REST API**: FastAPI backend for customers, barbers, services, and bookings
-- **Chat UI**: Chainlit-powered conversational interface
 - **Async SQLAlchemy**: Database layer with Alembic migrations
+
+## Example Booking Flow
+
+### Successful Booking Journey
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent
+    participant BR as Business Rules
+    participant Tools
+    participant HITL as Human-in-Loop
+    participant DB as Database
+
+    User->>Agent: "Book haircut with Donny tomorrow at 7pm"<br/>Email: james.w@email.com
+
+    Agent->>Tools: lookup_customer(email)
+    Tools->>DB: Query customer by email
+    DB-->>Tools: Customer record
+    Tools-->>Agent: ✓ Found: James Wilson (ID: f31601...)
+
+    Agent->>Tools: search_barber(name="Donny")
+    Tools->>DB: Query barbers by name
+    DB-->>Tools: Barber record
+    Tools-->>Agent: ✓ Found: Donny Rodriguez (ID: 3b9c70...)
+
+    Agent->>Tools: list_services()
+    Tools->>DB: Query available services
+    DB-->>Tools: Service records
+    Tools-->>Agent: ✓ Premium Haircut ($45, 45min)
+
+    Agent->>Tools: check_availability(barber_id, date, time)
+    Tools->>DB: Query existing bookings
+    DB-->>Tools: Schedule data
+    Tools-->>Agent: ✓ Available: Nov 11, 7:00 PM
+
+    Agent->>BR: Validate before create_booking()
+    Note over BR: Check business rules:<br/>✓ Not in past<br/>✓ >2h notice (31h)<br/>✓ Before 2pm cutoff<br/>✓ Within 14 days<br/>✓ Business hours (9am-8pm)
+    BR-->>Agent: ✓ Policy compliant
+
+    Agent->>HITL: ⚠️ Booking requires approval
+    Note over HITL: Customer: James Wilson<br/>Barber: Donny Rodriguez<br/>Service: Premium Haircut ($45)<br/>Date/Time: Nov 11, 7:00 PM
+
+    User->>HITL: Approve ✓
+    HITL-->>Agent: Approved
+
+    Agent->>Tools: create_booking(customer, barber, service, datetime)
+    Tools->>DB: INSERT booking record
+    DB-->>Tools: Booking ID: a1b2c3d4...
+    Tools-->>Agent: ✓ Booking created
+
+    Agent->>User: ✅ Booking confirmed!<br/>ID: a1b2c3d4...<br/>Donny Rodriguez<br/>Nov 11, 2025 at 7:00 PM<br/>Premium Haircut ($45)
+```
+
+### Policy Violation - Same-Day After Cutoff
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent
+    participant BR as Business Rules
+    participant Tools
+
+    User->>Agent: "Book a haircut today at 8pm with Tony"<br/>Current time: 7:42 PM
+
+    Agent->>Tools: lookup_customer(email)
+    Tools-->>Agent: ✓ Found customer
+
+    Agent->>Tools: search_barber(name="Tony")
+    Tools-->>Agent: ✓ Found: Tony Martinez
+
+    Agent->>BR: Validate before create_booking()
+    Note over BR: Check same-day rules:<br/>Current: 7:42 PM<br/>Cutoff: 2:00 PM<br/>❌ After cutoff time
+    BR-->>Agent: ❌ Policy violation: same_day_cutoff
+
+    Note over Agent: LLM receives error:<br/>"Same-day bookings must be<br/>made before 14:00"
+
+    Agent->>User: ❌ Sorry, same-day bookings must be<br/>made before 2:00 PM. The cutoff<br/>has passed for today.<br/><br/>Would you like to book for<br/>tomorrow (Nov 11) or later?
+```
+
+### Successful Cancellation Journey
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent
+    participant BR as Business Rules
+    participant Tools
+    participant HITL as Human-in-Loop
+    participant DB as Database
+
+    User->>Agent: "Cancel my booking for next week"<br/>Email: james.w@email.com
+
+    Agent->>Tools: lookup_customer(email)
+    Tools->>DB: Query customer
+    DB-->>Tools: Customer record
+    Tools-->>Agent: ✓ Found: James Wilson
+
+    Agent->>Tools: get_bookings(customer_id, status="scheduled")
+    Tools->>DB: Query bookings
+    DB-->>Tools: Booking records
+    Tools-->>Agent: ✓ Found: Nov 18, 2:00 PM<br/>with Tony Martinez
+
+    Agent->>BR: Validate before cancel_booking()
+    Note over BR: Check cancellation policy:<br/>Booking: Nov 18, 2:00 PM<br/>Current: Nov 10, 7:42 PM<br/>Notice: 174+ hours<br/>✓ >24h requirement met
+    BR-->>Agent: ✓ Policy compliant
+
+    Agent->>HITL: ⚠️ Cancellation requires approval
+    Note over HITL: Cancel booking:<br/>Customer: James Wilson<br/>Barber: Tony Martinez<br/>Service: Basic Haircut<br/>Date/Time: Nov 18, 2:00 PM<br/>ID: xyz789...
+
+    User->>HITL: Approve ✓
+    HITL-->>Agent: Approved
+
+    Agent->>Tools: cancel_booking(booking_id)
+    Tools->>DB: UPDATE status = 'cancelled'
+    DB-->>Tools: Success
+    Tools-->>Agent: ✓ Booking cancelled
+
+    Agent->>User: ✅ Your booking has been cancelled:<br/>Nov 18, 2025 at 2:00 PM<br/>with Tony Martinez<br/><br/>Feel free to book again anytime!
+```
+
+### Policy Violation - Insufficient Cancellation Notice
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent
+    participant BR as Business Rules
+    participant Tools
+
+    User->>Agent: "Cancel my appointment tomorrow at 2pm"<br/>Current: Nov 10, 7:42 PM
+
+    Agent->>Tools: lookup_customer(email)
+    Tools-->>Agent: ✓ Found customer
+
+    Agent->>Tools: get_bookings(customer_id)
+    Tools-->>Agent: ✓ Found: Nov 11, 2:00 PM
+
+    Agent->>BR: Validate before cancel_booking()
+    Note over BR: Check cancellation policy:<br/>Booking: Nov 11, 2:00 PM<br/>Current: Nov 10, 7:42 PM<br/>Notice: ~18 hours<br/>❌ <24h requirement
+    BR-->>Agent: ❌ Policy violation: cancellation_notice
+
+    Note over Agent: LLM receives error:<br/>"Cancellations require at least<br/>24 hours notice"
+
+    Agent->>User: ❌ Sorry, cancellations require at<br/>least 24 hours notice. Your booking<br/>is in 18 hours.<br/><br/>Our policy helps barbers manage<br/>their schedules. You can still<br/>reschedule if you'd like.
+```
+
+### Successful Update Booking Journey
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent
+    participant BR as Business Rules
+    participant Tools
+    participant HITL as Human-in-Loop
+    participant DB as Database
+
+    User->>Agent: "Move my appointment to Friday at 3pm"<br/>Email: james.w@email.com
+
+    Agent->>Tools: lookup_customer(email)
+    Tools-->>Agent: ✓ Found: James Wilson
+
+    Agent->>Tools: get_bookings(customer_id)
+    Tools-->>Agent: ✓ Current: Nov 11, 7:00 PM
+
+    Agent->>Tools: check_availability(barber_id, new_date, new_time)
+    Tools-->>Agent: ✓ Available: Nov 14, 3:00 PM
+
+    Agent->>BR: Validate before update_booking()
+    Note over BR: Check business rules for new time:<br/>✓ Not in past<br/>✓ >2h notice (if same-day)<br/>✓ Within 14 days<br/>✓ Business hours
+    BR-->>Agent: ✓ Policy compliant
+
+    Agent->>HITL: ⚠️ Update requires approval
+    Note over HITL: Update booking:<br/>FROM: Nov 11, 7:00 PM<br/>TO: Nov 14, 3:00 PM<br/>Customer: James Wilson<br/>Barber: Donny Rodriguez
+
+    User->>HITL: Approve ✓
+    HITL-->>Agent: Approved
+
+    Agent->>Tools: update_booking(booking_id, new_date, new_time)
+    Tools->>DB: UPDATE booking record
+    DB-->>Tools: Success
+    Tools-->>Agent: ✓ Booking updated
+
+    Agent->>User: ✅ Booking updated successfully!<br/>New appointment:<br/>Nov 14, 2025 at 3:00 PM<br/>with Donny Rodriguez
+```
+
+### Policy Enforcement Flow
+
+```mermaid
+flowchart TD
+    Start([User: Book today at 2pm]) --> CheckTime{Check current time}
+
+    CheckTime -->|After 2pm cutoff| Reject[❌ Same-day cutoff passed]
+    CheckTime -->|Before cutoff| CheckNotice{At least 2h notice?}
+
+    CheckNotice -->|No| Reject
+    CheckNotice -->|Yes| CheckAvail[Check barber availability]
+
+    CheckAvail --> IsAvail{Barber available?}
+    IsAvail -->|No| Suggest[Suggest alternative times]
+    IsAvail -->|Yes| Check24h{Cancellation: 24h notice?}
+
+    Reject --> Offer[Offer tomorrow or later]
+    Offer --> End([User chooses alternative])
+
+    Check24h -->|No| Warn[⚠️ Cannot cancel within 24h]
+    Check24h -->|Yes| HITL[Human-in-Loop Approval]
+
+    HITL --> Approved{User approves?}
+    Approved -->|Yes| Success[✅ Booking created]
+    Approved -->|No| Cancelled([Booking cancelled])
+
+    Success --> End
+    Suggest --> End
+    Warn --> End
+
+    style Reject fill:#ffcdd2
+    style Success fill:#c8e6c9
+    style HITL fill:#fff9c4
+    style Warn fill:#ffe0b2
+```
 
 ## Documentation
 
@@ -252,10 +473,14 @@ barbershop/
 
 The agent uses the following middleware (in execution order):
 
-1. **booking_context** - Injects current date and business context
-2. **conversation_summary** - Trims conversation history
-3. **PII masking** - Masks emails and credit card numbers
-4. **usage_tracking** - Tracks token consumption
+1. **business_rules** - Enforces booking policies BEFORE tool execution:
+   - 2-hour minimum notice for same-day bookings
+   - 24-hour cancellation policy
+   - Business hours validation
+   - Maximum advance booking window (14 days)
+2. **conversation_summary** - Trims conversation history to prevent context overflow
+3. **PII masking** - Masks emails and credit card numbers before sending to LLM
+4. **usage_tracking** - Tracks token consumption for monitoring
 5. **human_in_the_loop** - Requires approval for sensitive operations (`create_booking`, `cancel_booking`, `update_booking`)
 
 See [MIDDLEWARE.md](docs/MIDDLEWARE.md) for details.
