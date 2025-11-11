@@ -1,0 +1,200 @@
+# Barbershop Seed Data Configuration
+# This file contains all initial data for the barbershop database
+
+business:
+  name: Tony's Barbershop
+  phone: +1-555-0100
+  email: info@tonysbarbershop.com
+  address: 123 Main Street, Anytown, USA 12345
+  timezone: America/New_York
+
+  # Business hours (day_of_week: 0=Monday, 6=Sunday)
+  hours:
+    0:
+      open: "09:00"  # Monday
+      close: "20:00"
+    1:
+      open: "09:00"  # Tuesday
+      close: "20:00"
+    2:
+      open: "09:00"  # Wednesday
+      close: "20:00"
+    3:
+      open: "09:00"  # Thursday
+      close: "20:00"
+    4:
+      open: "09:00"  # Friday
+      close: "21:00"
+    5:
+      open: "09:00"  # Saturday
+      close: "21:00"
+    6:
+      open: "10:00"  # Sunday
+      close: "18:00"
+
+  # Booking policies
+  booking:
+    slot_duration_minutes: 30
+    advance_days: 14
+    cancellation_notice_hours: 24
+    same_day_cutoff_hour: 14
+
+# Services offered
+services:
+  - name: Haircut
+    description: Classic men's haircut with styling
+    duration_minutes: 30
+    price: 35.00
+    category: haircut
+    is_active: true
+
+  - name: Haircut & Beard Trim
+    description: Haircut with beard shaping and trim
+    duration_minutes: 45
+    price: 50.00
+    category: package
+    is_active: true
+
+  - name: Beard Trim
+    description: Professional beard trimming and shaping
+    duration_minutes: 20
+    price: 20.00
+    category: grooming
+    is_active: true
+
+  - name: Hot Towel Shave
+    description: Traditional hot towel straight razor shave
+    duration_minutes: 30
+    price: 40.00
+    category: grooming
+    is_active: true
+
+  - name: Deluxe Package
+    description: Haircut, beard trim, and hot towel shave
+    duration_minutes: 60
+    price: 80.00
+    category: package
+    is_active: true
+
+  - name: Kids Haircut
+    description: Haircut for children under 12
+    duration_minutes: 20
+    price: 25.00
+    category: haircut
+    is_active: true
+
+  - name: Buzz Cut
+    description: Quick all-over buzz cut
+    duration_minutes: 15
+    price: 20.00
+    category: haircut
+    is_active: true
+
+  - name: Hair Color
+    description: Professional hair coloring service
+    duration_minutes: 90
+    price: 75.00
+    category: styling
+    is_active: true
+
+# Barbers
+barbers:
+  - name: Tony
+    email: tony@tonysbarbershop.com
+    phone: +1-555-0101
+    specialties:
+      - Classic cuts
+      - Beard styling
+      - Hot towel shaves
+    is_active: true
+
+  - name: Donny
+    email: donny@tonysbarbershop.com
+    phone: +1-555-0102
+    specialties:
+      - Modern styles
+      - Fades
+      - Hair coloring
+    is_active: true
+
+  - name: Mike
+    email: mike@tonysbarbershop.com
+    phone: +1-555-0103
+    specialties:
+      - Traditional cuts
+      - Beard trims
+      - Kids cuts
+    is_active: true
+
+  - name: Vincent
+    email: vincent@tonysbarbershop.com
+    phone: +1-555-0104
+    specialties:
+      - Executive cuts
+      - Straight razor shaves
+      - Luxury grooming
+    is_active: true
+
+# Sample customers for testing
+customers:
+  - name: John Smith
+    email: user@example.com
+    phone: +1-240-408-0054
+    customer_id: "01"
+    notes: Prefers Tony, likes classic cuts
+
+  - name: Michael Johnson
+    email: michael.j@email.com
+    phone: +1-555-2001
+    customer_id: "02"
+    notes: Regular customer, every 2 weeks
+
+  - name: David Brown
+    email: david.brown@email.com
+    phone: +1-555-2002
+    customer_id: "03"
+    notes: Prefers modern fades
+
+  - name: James Wilson
+    email: james.w@email.com
+    phone: +1-555-2003
+    customer_id: "04"
+    notes: Beard trim specialist needed
+
+# Barber availability (weekly schedule)
+# day_of_week: 0=Monday, 6=Sunday
+barber_schedules:
+  Tony:
+    0: { start: "09:00", end: "17:00" } # Monday
+    1: { start: "09:00", end: "17:00" } # Tuesday
+    2: { start: "09:00", end: "17:00" } # Wednesday
+    3: { start: "09:00", end: "17:00" } # Thursday
+    4: { start: "09:00", end: "19:00" } # Friday
+    5: { start: "09:00", end: "19:00" } # Saturday
+    # Sunday: off
+
+  Donny:
+    0: { start: "10:00", end: "18:00" } # Monday
+    1: { start: "10:00", end: "18:00" } # Tuesday
+    2: { start: "10:00", end: "18:00" } # Wednesday
+    3: { start: "10:00", end: "18:00" } # Thursday
+    4: { start: "12:00", end: "21:00" } # Friday
+    5: { start: "12:00", end: "21:00" } # Saturday
+    6: { start: "10:00", end: "18:00" } # Sunday
+
+  Mike:
+    1: { start: "09:00", end: "17:00" } # Tuesday
+    2: { start: "09:00", end: "17:00" } # Wednesday
+    3: { start: "09:00", end: "17:00" } # Thursday
+    4: { start: "09:00", end: "19:00" } # Friday
+    5: { start: "09:00", end: "19:00" } # Saturday
+    6: { start: "10:00", end: "18:00" } # Sunday
+    # Monday: off
+
+  Vincent:
+    0: { start: "11:00", end: "19:00" } # Monday
+    2: { start: "11:00", end: "19:00" } # Wednesday
+    3: { start: "11:00", end: "19:00" } # Thursday
+    4: { start: "11:00", end: "20:00" } # Friday
+    5: { start: "11:00", end: "20:00" } # Saturday
+    # Tuesday & Sunday: off

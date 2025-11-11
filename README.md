@@ -126,7 +126,7 @@ git clone <repository-url>
 cd barbershop
 
 # Install dependencies with uv
-uv sync
+uv sync --all-extras
 
 # Or with pip
 pip install -e ".[dev]"
