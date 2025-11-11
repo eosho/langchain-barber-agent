@@ -1,4 +1,4 @@
-# Barbershop Booking Agent
+# 💈 Barbershop Booking Agent
 
 AI-powered barbershop booking system with conversational interface, built on LangChain agents with FastAPI backend.
 
@@ -8,8 +8,65 @@ AI-powered barbershop booking system with conversational interface, built on Lan
 - **Business Rules Enforcement**: Validates bookings (2-hour minimum notice, 24-hour cancellation policy)
 - **Middleware Stack**: PII masking, usage tracking, context injection, human-in-the-loop
 - **REST API**: FastAPI backend for customers, barbers, services, and bookings
-- **Chat UI**: Chainlit-powered conversational interface
 - **Async SQLAlchemy**: Database layer with Alembic migrations
+
+## Example Conversations
+
+**Successful Bookings:**
+- "Book a haircut with Donny tomorrow at 7pm" (with email: james.w@email.com)
+- "I need a beard trim next Tuesday at 3pm with Tony"
+- "Schedule me for a premium haircut on Friday afternoon"
+
+**Policy Violations:**
+- ❌ "Book a haircut today at 8pm" (after 2pm cutoff)
+- ❌ "I need a haircut in 1 hour" (insufficient notice)
+- ❌ "Book me for January 15th, 2026" (too far in advance)
+
+**Cancellations:**
+- ✅ "Cancel my booking next week" (>24 hours notice)
+- ✅ "I need to cancel my appointment on November 18th"
+- ❌ "Cancel my appointment tomorrow" (<24 hours notice)
+
+**Updates:**
+- ✅ "Move my appointment to Friday at 3pm" (valid future date)
+- ✅ "Reschedule my booking to next Tuesday"
+- ❌ "Change my booking to today at 5pm" (same-day after cutoff)
+
+### Policy Enforcement Flow
+
+```mermaid
+flowchart TD
+    Start([User: Book today at 2pm]) --> CheckTime{Check current time}
+
+    CheckTime -->|After 2pm cutoff| Reject[❌ Same-day cutoff passed]
+    CheckTime -->|Before cutoff| CheckNotice{At least 2h notice?}
+
+    CheckNotice -->|No| Reject
+    CheckNotice -->|Yes| CheckAvail[Check barber availability]
+
+    CheckAvail --> IsAvail{Barber available?}
+    IsAvail -->|No| Suggest[Suggest alternative times]
+    IsAvail -->|Yes| Check24h{Cancellation: 24h notice?}
+
+    Reject --> Offer[Offer tomorrow or later]
+    Offer --> End([User chooses alternative])
+
+    Check24h -->|No| Warn[⚠️ Cannot cancel within 24h]
+    Check24h -->|Yes| HITL[Human-in-Loop Approval]
+
+    HITL --> Approved{User approves?}
+    Approved -->|Yes| Success[✅ Booking created]
+    Approved -->|No| Cancelled([Booking cancelled])
+
+    Success --> End
+    Suggest --> End
+    Warn --> End
+
+    style Reject fill:#ffcdd2
+    style Success fill:#c8e6c9
+    style HITL fill:#fff9c4
+    style Warn fill:#ffe0b2
+```
 
 ## Documentation
 
@@ -252,10 +309,14 @@ barbershop/
 
 The agent uses the following middleware (in execution order):
 
-1. **booking_context** - Injects current date and business context
-2. **conversation_summary** - Trims conversation history
-3. **PII masking** - Masks emails and credit card numbers
-4. **usage_tracking** - Tracks token consumption
+1. **business_rules** - Enforces booking policies BEFORE tool execution:
+   - 2-hour minimum notice for same-day bookings
+   - 24-hour cancellation policy
+   - Business hours validation
+   - Maximum advance booking window (14 days)
+2. **conversation_summary** - Trims conversation history to prevent context overflow
+3. **PII masking** - Masks emails and credit card numbers before sending to LLM
+4. **usage_tracking** - Tracks token consumption for monitoring
 5. **human_in_the_loop** - Requires approval for sensitive operations (`create_booking`, `cancel_booking`, `update_booking`)
 
 See [MIDDLEWARE.md](docs/MIDDLEWARE.md) for details.

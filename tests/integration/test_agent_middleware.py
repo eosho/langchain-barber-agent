@@ -3,7 +3,6 @@
 import pytest
 
 from src.agent.agent import create_booking_agent
-from src.agent.middleware.booking_context import booking_context_middleware
 from src.agent.middleware.usage_tracking import usage_tracking_middleware
 
 
@@ -28,11 +27,6 @@ class TestAgentStructure:
         # Agent should have checkpointer for state management
         assert hasattr(agent, "checkpointer")
         assert agent.checkpointer is not None
-
-    def test_booking_context_middleware_exists(self):
-        """Test that booking context middleware is properly initialized."""
-        assert booking_context_middleware is not None
-        assert booking_context_middleware.name == "booking_context"
 
     def test_usage_tracking_middleware_exists(self):
         """Test that usage tracking middleware is properly initialized."""

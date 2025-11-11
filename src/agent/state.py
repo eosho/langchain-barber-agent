@@ -6,10 +6,10 @@ that persist across conversation turns.
 
 from typing import NotRequired
 
-from langgraph.graph import MessagesState
+from langchain.agents import AgentState
 
 
-class BookingAgentState(MessagesState):
+class BookingAgentState(AgentState):
     """Extended agent state with booking-specific fields."""
 
     # Business context

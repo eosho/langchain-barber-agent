@@ -1,6 +1,6 @@
 [project]
 name = "barbershop-booking-agent"
-version = "0.1.0"
+version = "0.1.1"
 description = "AI-powered barbershop booking agent with conversational interface"
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
@@ -102,9 +102,7 @@ packages = ["src"]
 [tool.poe.tasks]
 # Development servers
 dev-api = "uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8005"
-dev-ui = "chainlit run src/ui/chat_app.py --host 0.0.0.0 --port 8006"
 dev-agent = "python run.py"
-dev-all = ["dev-api", "dev-ui"]  # Run both in parallel
 
 # Database management
 db-init = "alembic upgrade head"

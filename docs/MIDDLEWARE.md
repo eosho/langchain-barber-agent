@@ -6,8 +6,8 @@ Middleware components that provide cross-cutting concerns for the booking agent 
 
 ```mermaid
 graph LR
-    USER[User Input] --> BC[BookingContext]
-    BC --> CS[ConversationSummary]
+    USER[User Input] --> BR[BusinessRules]
+    BR --> CS[ConversationSummary]
     CS --> PII[PII Masking]
     PII --> MODEL[LLM Call]
     MODEL --> UT[UsageTracking]
@@ -15,7 +15,7 @@ graph LR
     HITL --> TOOL[Tool Execution]
     TOOL --> RESPONSE[Response]
 
-    style BC fill:#e3f2fd
+    style BR fill:#ffcdd2
     style CS fill:#e3f2fd
     style PII fill:#fff3e0
     style UT fill:#f3e5f5
@@ -26,27 +26,46 @@ graph LR
 
 | Hook | When | Used By |
 |------|------|---------|
-| `before_model` | Before each LLM call | BookingContext, ConversationSummary, PII |
+| `before_model` | Before each LLM call | ConversationSummary, PII |
 | `after_model` | After LLM response | UsageTracking, HumanInLoop |
-| `wrap_tool_call` | Around tool execution | (Future: error handling) |
+| `before_tool_call` | Before tool execution | BusinessRules |
 
 ## Components
 
-### BookingContextMiddleware
-**Location**: `src/agent/middleware/booking_context.py`
+### BusinessRulesMiddleware
+**Location**: `src/agent/middleware/business_rules.py`
 
-Injects contextual information into agent state before LLM calls.
+Enforces booking policies and business rules BEFORE tool execution to prevent violations.
 
-**Injects**:
-- `current_date`: Today's date for time calculations
-- `conversation_stage`: Tracks booking flow progress
-- `business_name`: For personalized responses
+**Policies Enforced**:
+- ✅ 2-hour minimum notice for same-day bookings
+- ✅ Same-day booking cutoff (2:00 PM default)
+- ✅ 24-hour cancellation policy
+- ✅ Maximum advance booking (14 days default)
+- ✅ Business hours validation
+- ✅ No past date bookings
 
+**Validated Tools**:
+- `create_booking`: Validates date/time against all policies
+- `cancel_booking`: Validates cancellation notice requirement
+- `update_booking`: Validates new date/time if changed
+
+**Error Response Format**:
 ```python
-# Automatically adds to state
-state["current_date"] = "2024-11-10"
-state["business_name"] = "The Barbershop"
+{
+    "error": "Same-day bookings require at least 2.0 hours notice",
+    "policy": "minimum_notice",
+    "hours_needed": 2.0,
+    "hours_available": 1.5,
+    "suggestion": "Please book for 2025-11-11 15:00 or later"
+}
 ```
+
+**Benefits**:
+- 🛡️ Prevents policy violations before API calls
+- 💰 Reduces unnecessary database queries
+- 🤖 Provides structured feedback for LLM
+- 📝 Centralized policy enforcement
 
 ---
 
@@ -255,7 +274,7 @@ agent = create_agent(
     model=llm,
     tools=tools,
     middleware=[
-        booking_context_middleware,
+        conversation_summary_middleware,
         CustomMiddleware(),  # Your middleware
         usage_tracking_middleware,
     ]
