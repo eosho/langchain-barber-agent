@@ -105,7 +105,11 @@ flowchart LR
     style F fill:#ffcdd2,stroke:#c62828,stroke-width:2px
 ```
 
-**Operations requiring approval**: `create_booking`, `cancel_booking`, `modify_booking`
+**Operations requiring approval**:
+   - `create_booking`,
+   - `cancel_booking`,
+   - `modify_booking`
+
 **All other tools execute immediately** without approval.
 
 
@@ -271,8 +275,7 @@ Pre-commit hooks include:
 - Black formatting
 - MyPy type checking
 - Trailing whitespace removal
-- YAML/JSON validation
-- Security scanning with Bandit
+- YAML/JSON validation, etc...
 
 ## CI/CD
 
@@ -283,37 +286,12 @@ Runs on push and pull requests:
 - **Lint & Format**: Ruff and Black checks
 - **Type Check**: MyPy static analysis
 - **Tests**: Unit and integration tests (Python 3.11 & 3.12)
-- **Security**: Bandit security scanning
-- **Build**: Package build verification
-- **CodeQL**: Security vulnerability scanning
-
-### Continuous Deployment (CD)
-Triggered by version tags (`v*.*.*`):
-- **Build & Push**: Docker image to GitHub Container Registry
-- **Deploy Staging**: Auto-deploy to staging environment
-- **Deploy Production**: Deploy to production (requires approval)
-- **Release**: Create GitHub release with changelog
 
 **Trigger deployment**:
 ```bash
 # Create and push version tag
 git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
-```
-
-## Docker
-
-Build and run with Docker:
-
-```bash
-# Build image
-docker build -t barbershop-agent .
-
-# Run API server
-docker run -p 8005:8005 -e OPENAI_API_KEY=sk-... barbershop-agent
-
-# Run with docker-compose (create docker-compose.yml first)
-docker-compose up
 ```
 
 ## Project Structure
