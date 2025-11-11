@@ -51,7 +51,7 @@ class TestConversationSummaryMiddleware:
         """Test that conversation summary doesn't use wrap_model_call."""
         # This middleware uses before_model instead of wrap_model_call
         # So wrap_model_call should be None or not defined
-        wrap_model_call = getattr(middleware, "wrap_model_call", None)
+        getattr(middleware, "wrap_model_call", None)
         # It's okay if it exists but shouldn't be the primary mechanism
         assert middleware.before_model is not None
 

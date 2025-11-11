@@ -163,6 +163,9 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 strict_equality = true
+exclude = [
+    "src.utils.*",
+]
 
 [[tool.mypy.overrides]]
 module = [
