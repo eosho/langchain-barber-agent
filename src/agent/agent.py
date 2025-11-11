@@ -25,7 +25,6 @@ from src.agent.tools import (
     get_barber_tools,
     get_booking_tools,
     get_customer_tools,
-    get_policy_tools,
     get_service_tools,
 )
 
@@ -53,7 +52,6 @@ def create_booking_agent(business_name: str = "The Barbershop") -> Any:
         *get_service_tools(),
         *get_barber_tools(),
         *get_availability_tools(),
-        *get_policy_tools(),
         *get_booking_tools(),
     ]
 

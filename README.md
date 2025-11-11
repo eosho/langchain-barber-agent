@@ -10,6 +10,10 @@ AI-powered barbershop booking system with conversational interface, built on Lan
 - **REST API**: FastAPI backend for customers, barbers, services, and bookings
 - **Async SQLAlchemy**: Database layer with Alembic migrations
 
+### Agent Graph
+
+![Agent Graph](./graph.png)
+
 ## Example Conversations
 
 **Successful Bookings:**
